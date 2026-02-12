@@ -47,6 +47,11 @@ func main() {
 		}
 	case "version":
 		fmt.Printf("sophia-who v%s\n", version)
+	case "serve":
+		if err := runServe(); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -65,6 +70,7 @@ Usage:
   who show <uuid>  Display a holon's identity
   who list         List all known holons in the current project
   who pin <uuid>   Capture version/commit/arch for a holon's binary
+  who serve [port] Start the gRPC server (default: 50051)
   who version      Print version
   who help         Print this help`)
 }

@@ -126,25 +126,34 @@ func runNew() error {
 
 	outputPath := filepath.Join(outputDir, "HOLON.md")
 
-	tmpl, err := template.New("holon").Funcs(tmplFuncs).Parse(holonTemplate)
-	if err != nil {
-		return fmt.Errorf("template error: %w", err)
-	}
-
-	f, err := os.Create(outputPath)
-	if err != nil {
-		return fmt.Errorf("cannot create %s: %w", outputPath, err)
-	}
-	defer f.Close()
-
-	if err := tmpl.Execute(f, id); err != nil {
-		return fmt.Errorf("template execution error: %w", err)
+	if err := writeHolonMD(id, outputPath); err != nil {
+		return err
 	}
 
 	fmt.Printf("\n✓ Born: %s %s\n", id.GivenName, id.FamilyName)
 	fmt.Printf("  UUID: %s\n", id.UUID)
 	fmt.Printf("  File: %s\n", outputPath)
 
+	return nil
+}
+
+// writeHolonMD renders an Identity to a HOLON.md file using the template.
+// Shared by the CLI (runNew) and the gRPC server (CreateIdentity).
+func writeHolonMD(id Identity, path string) error {
+	tmpl, err := template.New("holon").Funcs(tmplFuncs).Parse(holonTemplate)
+	if err != nil {
+		return fmt.Errorf("template error: %w", err)
+	}
+
+	f, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("cannot create %s: %w", path, err)
+	}
+	defer f.Close()
+
+	if err := tmpl.Execute(f, id); err != nil {
+		return fmt.Errorf("template execution error: %w", err)
+	}
 	return nil
 }
 
