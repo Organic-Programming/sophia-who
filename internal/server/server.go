@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"sophia-who/internal/identity"
-	pb "sophia-who/proto"
+	"github.com/Organic-Programming/sophia-who/pkg/identity"
+	pb "github.com/Organic-Programming/sophia-who/proto"
 
 	"google.golang.org/grpc"
 	grpcReflection "google.golang.org/grpc/reflection"
@@ -100,12 +100,15 @@ func (s *Server) ListIdentities(ctx context.Context, req *pb.ListIdentitiesReque
 		return nil, err
 	}
 
-	pbHolons := make([]*pb.HolonIdentity, 0, len(holons))
+	entries := make([]*pb.HolonEntry, 0, len(holons))
 	for _, h := range holons {
-		pbHolons = append(pbHolons, toProto(h))
+		entries = append(entries, &pb.HolonEntry{
+			Identity: toProto(h),
+			Origin:   "local",
+		})
 	}
 
-	return &pb.ListIdentitiesResponse{Identities: pbHolons}, nil
+	return &pb.ListIdentitiesResponse{Entries: entries}, nil
 }
 
 // PinVersion updates the version pinning for a holon.

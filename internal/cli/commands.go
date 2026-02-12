@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"sophia-who/internal/identity"
+	"github.com/Organic-Programming/sophia-who/pkg/identity"
 
 	"gopkg.in/yaml.v3"
 )

@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"sophia-who/internal/identity"
-	pb "sophia-who/proto"
+	"github.com/Organic-Programming/sophia-who/pkg/identity"
+	pb "github.com/Organic-Programming/sophia-who/proto"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -83,8 +83,8 @@ func TestListIdentities(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListIdentities failed: %v", err)
 	}
-	if len(resp.Identities) != 2 {
-		t.Fatalf("ListIdentities returned %d identities, want 2", len(resp.Identities))
+	if len(resp.Entries) != 2 {
+		t.Fatalf("ListIdentities returned %d entries, want 2", len(resp.Entries))
 	}
 }
 
@@ -98,8 +98,8 @@ func TestListIdentitiesEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListIdentities failed: %v", err)
 	}
-	if len(resp.Identities) != 0 {
-		t.Errorf("ListIdentities returned %d identities, want 0", len(resp.Identities))
+	if len(resp.Entries) != 0 {
+		t.Errorf("ListIdentities returned %d entries, want 0", len(resp.Entries))
 	}
 }
 

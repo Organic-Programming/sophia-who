@@ -1,4 +1,4 @@
-module sophia-who
+module github.com/Organic-Programming/sophia-who
 
 go 1.24.0
 
