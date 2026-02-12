@@ -35,13 +35,17 @@ func main() {
 		}
 		err = cli.RunPin(os.Args[2])
 	case "serve":
-		port := "9090"
+		listenURI := "tcp://:9090"
 		for i, arg := range os.Args[2:] {
+			if arg == "--listen" && i+1 < len(os.Args[2:]) {
+				listenURI = os.Args[2+i+1]
+			}
+			// Backward compatibility: --port 9090 → tcp://:9090
 			if arg == "--port" && i+1 < len(os.Args[2:]) {
-				port = os.Args[2+i+1]
+				listenURI = "tcp://:" + os.Args[2+i+1]
 			}
 		}
-		err = server.ListenAndServe(port, true)
+		err = server.ListenAndServe(listenURI, true)
 	default:
 		printUsage()
 		os.Exit(1)
@@ -57,9 +61,11 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, `Sophia Who? — holon identity manager
 
 Usage:
-  who new                     create a new holon identity (interactive)
-  who show <uuid>             display a holon's identity
-  who list                    list all known holons (local + cached)
-  who pin <uuid>              capture version/commit/arch for a holon's binary
-  who serve [--port 9090]     start gRPC server`)
+  who new                                     create a new holon identity
+  who show <uuid>                             display a holon's identity
+  who list                                    list all known holons
+  who pin <uuid>                              capture version/commit/arch
+  who serve [--listen tcp://:9090]            start gRPC server
+  who serve --listen unix:///tmp/who.sock     Unix domain socket
+  who serve --listen stdio://                 stdin/stdout pipe`)
 }

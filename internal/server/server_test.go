@@ -459,7 +459,7 @@ func TestListenAndServePortConflict(t *testing.T) {
 	port := lis.Addr().(*net.TCPAddr).Port
 
 	// Now ListenAndServe on the same port should fail
-	err = ListenAndServe(fmt.Sprintf("%d", port), true)
+	err = ListenAndServe(fmt.Sprintf("tcp://:%d", port), true)
 	if err == nil {
 		t.Fatal("expected error for port conflict")
 	}
@@ -474,7 +474,7 @@ func TestListenAndServePortConflictNoReflect(t *testing.T) {
 
 	port := lis.Addr().(*net.TCPAddr).Port
 
-	err = ListenAndServe(fmt.Sprintf("%d", port), false)
+	err = ListenAndServe(fmt.Sprintf("tcp://:%d", port), false)
 	if err == nil {
 		t.Fatal("expected error for port conflict (no-reflect)")
 	}
@@ -491,7 +491,7 @@ func TestListenAndServeStartStop(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- ListenAndServe(fmt.Sprintf("%d", port), true)
+		errCh <- ListenAndServe(fmt.Sprintf("tcp://:%d", port), true)
 	}()
 
 	// Give the server time to start, then connect and verify
@@ -526,7 +526,7 @@ func TestListenAndServeStartStopNoReflect(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- ListenAndServe(fmt.Sprintf("%d", port), false)
+		errCh <- ListenAndServe(fmt.Sprintf("tcp://:%d", port), false)
 	}()
 
 	var conn net.Conn

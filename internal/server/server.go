@@ -5,11 +5,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/Organic-Programming/sophia-who/internal/transport"
 	"github.com/Organic-Programming/sophia-who/pkg/identity"
 	pb "github.com/Organic-Programming/sophia-who/proto"
 
@@ -154,12 +154,13 @@ func (s *Server) PinVersion(ctx context.Context, req *pb.PinVersionRequest) (*pb
 	return &pb.PinVersionResponse{Identity: toProto(id)}, nil
 }
 
-// ListenAndServe starts the gRPC server on the given port.
-// When reflect is true, server reflection is enabled (default per Constitution Art. 2).
-func ListenAndServe(port string, reflect bool) error {
-	lis, err := net.Listen("tcp", ":"+port)
+// ListenAndServe starts the gRPC server on the given transport URI.
+// Supported URIs: tcp://<host>:<port>, unix://<path>, stdio://
+// When reflect is true, server reflection is enabled (mandatory per Constitution).
+func ListenAndServe(listenURI string, reflect bool) error {
+	lis, err := transport.Listen(listenURI)
 	if err != nil {
-		return fmt.Errorf("failed to listen on port %s: %w", port, err)
+		return fmt.Errorf("listen %s: %w", listenURI, err)
 	}
 
 	s := grpc.NewServer()
@@ -172,7 +173,7 @@ func ListenAndServe(port string, reflect bool) error {
 	if !reflect {
 		mode = "reflection OFF"
 	}
-	log.Printf("Sophia Who? gRPC server listening on :%s (%s)", port, mode)
+	log.Printf("Sophia Who? gRPC server listening on %s (%s)", listenURI, mode)
 	return s.Serve(lis)
 }
 
