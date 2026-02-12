@@ -7,12 +7,17 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"nhooyr.io/websocket"
+
+	"github.com/Organic-Programming/go-holons/pkg/transport"
 	"github.com/Organic-Programming/sophia-who/pkg/identity"
 	pb "github.com/Organic-Programming/sophia-who/proto"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/test/bufconn"
 )
 
@@ -571,5 +576,118 @@ func TestCreateIdentityReadOnlyDir(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error for read-only output directory")
+	}
+}
+
+// --- mem:// transport test (using go-holons SDK MemListener) ---
+
+func TestMemTransport(t *testing.T) {
+	root := t.TempDir()
+	seedHolon(t, root, "mem-uuid-1", "MemTest")
+
+	original, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(root); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(original) //nolint:errcheck
+
+	mem := transport.NewMemListener()
+	s := grpc.NewServer()
+	pb.RegisterSophiaWhoServiceServer(s, &Server{})
+	go func() { _ = s.Serve(mem) }()
+	defer s.Stop()
+
+	conn, err := grpc.NewClient(
+		"passthrough:///mem",
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			return mem.Dial()
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+
+	client := pb.NewSophiaWhoServiceClient(conn)
+	resp, err := client.ListIdentities(context.Background(), &pb.ListIdentitiesRequest{})
+	if err != nil {
+		t.Fatalf("ListIdentities over mem://: %v", err)
+	}
+	if len(resp.Entries) != 1 {
+		t.Errorf("ListIdentities returned %d entries, want 1", len(resp.Entries))
+	}
+}
+
+// --- ws:// transport test ---
+
+func TestWSTransport(t *testing.T) {
+	root := t.TempDir()
+	seedHolon(t, root, "ws-uuid-1", "WSTest")
+
+	original, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(root); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(original) //nolint:errcheck
+
+	wsLis, err := transport.Listen("ws://127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("ws listen: %v", err)
+	}
+	defer wsLis.Close()
+
+	s := grpc.NewServer()
+	pb.RegisterSophiaWhoServiceServer(s, &Server{})
+	reflection.Register(s)
+	go func() { _ = s.Serve(wsLis) }()
+	defer s.Stop()
+
+	// Connect via WebSocket
+	wsAddr := wsLis.Addr().String()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	c, _, err := websocket.Dial(ctx, wsAddr, &websocket.DialOptions{
+		Subprotocols: []string{"grpc"},
+	})
+	if err != nil {
+		t.Fatalf("ws dial: %v", err)
+	}
+	wsConn := websocket.NetConn(ctx, c, websocket.MessageBinary)
+
+	dialed := false
+	//nolint:staticcheck
+	conn, err := grpc.DialContext(ctx,
+		"passthrough:///ws",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+			if dialed {
+				return nil, fmt.Errorf("already consumed")
+			}
+			dialed = true
+			return wsConn, nil
+		}),
+		grpc.WithBlock(),
+	)
+	if err != nil {
+		wsConn.Close()
+		t.Fatalf("grpc dial over ws: %v", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewSophiaWhoServiceClient(conn)
+	resp, err := client.ListIdentities(context.Background(), &pb.ListIdentitiesRequest{})
+	if err != nil {
+		t.Fatalf("ListIdentities over ws://: %v", err)
+	}
+	if len(resp.Entries) != 1 {
+		t.Errorf("ListIdentities returned %d entries, want 1", len(resp.Entries))
 	}
 }
