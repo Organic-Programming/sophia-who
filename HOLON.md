@@ -49,7 +49,7 @@ She has no parents. Every other holon's identity passes through her.
 ```
 who new         — create a new holon identity (interactive)
 who show <uuid> — display a holon's identity
-who list        — list all known holons in the current project
+who list        — list all known holons (local + cached), labeling origin
 who pin <uuid>  — capture version/commit/arch for a holon's binary
 ```
 

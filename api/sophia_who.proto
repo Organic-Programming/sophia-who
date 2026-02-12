@@ -136,7 +136,13 @@ message ListIdentitiesRequest {
 }
 
 message ListIdentitiesResponse {
-  repeated HolonIdentity identities = 1;
+  repeated HolonEntry entries = 1;
+}
+
+// HolonEntry pairs an identity with its origin (local or cached).
+message HolonEntry {
+  HolonIdentity identity = 1;
+  string origin = 2;  // "local" or "cached"
 }
 
 // --- PinVersion ---

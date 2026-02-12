@@ -91,27 +91,76 @@ func RunShow(target string) error {
 	return nil
 }
 
-// RunList scans the current project for HOLON.md files and prints a summary.
+// RunList scans both local holons and the global cache, labeling the origin
+// of each so the actant knows what is local and what is a dependency.
 func RunList() error {
-	holons, err := identity.FindAll(".")
-	if err != nil {
-		return err
+	type entry struct {
+		id     identity.Identity
+		origin string
+	}
+	var entries []entry
+
+	// Local holons: project/holons/
+	localHolons, err := identity.FindAll("holons")
+	if err == nil {
+		for _, h := range localHolons {
+			entries = append(entries, entry{id: h, origin: "local"})
+		}
 	}
 
-	if len(holons) == 0 {
+	// Also scan current directory root for HOLON.md (standalone project)
+	rootHolons, err := identity.FindAll(".")
+	if err == nil {
+		for _, h := range rootHolons {
+			// Avoid duplicates from the holons/ scan
+			duplicate := false
+			for _, e := range entries {
+				if e.id.UUID == h.UUID {
+					duplicate = true
+					break
+				}
+			}
+			if !duplicate {
+				entries = append(entries, entry{id: h, origin: "local"})
+			}
+		}
+	}
+
+	// Cached holons: ~/.holon/cache/
+	cacheDir := holonCacheDir()
+	if cacheDir != "" {
+		cachedHolons, err := identity.FindAll(cacheDir)
+		if err == nil {
+			for _, h := range cachedHolons {
+				entries = append(entries, entry{id: h, origin: "cached"})
+			}
+		}
+	}
+
+	if len(entries) == 0 {
 		fmt.Println("No holons found.")
 		return nil
 	}
 
-	fmt.Printf("%-38s %-20s %-30s %s\n", "UUID", "NAME", "CLADE", "STATUS")
-	fmt.Println(strings.Repeat("─", 100))
+	fmt.Printf("%-38s %-20s %-8s %-25s %s\n", "UUID", "NAME", "ORIGIN", "CLADE", "STATUS")
+	fmt.Println(strings.Repeat("─", 105))
 
-	for _, h := range holons {
-		name := h.GivenName + " " + h.FamilyName
-		fmt.Printf("%-38s %-20s %-30s %s\n", h.UUID, name, h.Clade, h.Status)
+	for _, e := range entries {
+		name := e.id.GivenName + " " + e.id.FamilyName
+		fmt.Printf("%-38s %-20s %-8s %-25s %s\n", e.id.UUID, name, e.origin, e.id.Clade, e.id.Status)
 	}
 
 	return nil
+}
+
+// holonCacheDir returns the global holon cache directory (~/.holon/cache/).
+// Returns an empty string if the home directory cannot be determined.
+func holonCacheDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".holon", "cache")
 }
 
 // RunPin captures version, OS, and architecture information for a holon's binary.
