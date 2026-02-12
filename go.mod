@@ -3,6 +3,7 @@ module github.com/Organic-Programming/sophia-who
 go 1.24.0
 
 require (
+	github.com/Organic-Programming/go-holons v0.1.0
 	github.com/google/uuid v1.6.0
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11

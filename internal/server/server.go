@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Organic-Programming/sophia-who/internal/transport"
+	"github.com/Organic-Programming/go-holons/pkg/transport"
 	"github.com/Organic-Programming/sophia-who/pkg/identity"
 	pb "github.com/Organic-Programming/sophia-who/proto"
 

@@ -1,3 +1,5 @@
+github.com/Organic-Programming/go-holons v0.1.0 h1:PotC1POnoL6DQh7usZ9cBed7/7DsKWIPhar09efyixQ=
+github.com/Organic-Programming/go-holons v0.1.0/go.mod h1:ic6lS8kzFAIZBvBSZOHrU/RTfwt3dnOujM6qQt3Pr5k=
 github.com/go-logr/logr v1.4.3 h1:CjnDlHq8ikf6E492q6eKboGOC0T8CDaOvkHCIg8idEI=
 github.com/go-logr/logr v1.4.3/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
 github.com/go-logr/stdr v1.2.2 h1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag=
