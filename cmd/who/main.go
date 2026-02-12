@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/Organic-Programming/sophia-who/internal/cli"
+	"github.com/Organic-Programming/sophia-who/internal/server"
 )
 
 func main() {
@@ -33,6 +34,14 @@ func main() {
 			os.Exit(1)
 		}
 		err = cli.RunPin(os.Args[2])
+	case "serve":
+		port := "9090"
+		for i, arg := range os.Args[2:] {
+			if arg == "--port" && i+1 < len(os.Args[2:]) {
+				port = os.Args[2+i+1]
+			}
+		}
+		err = server.ListenAndServe(port, true)
 	default:
 		printUsage()
 		os.Exit(1)
@@ -48,8 +57,9 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, `Sophia Who? — holon identity manager
 
 Usage:
-  who new         create a new holon identity (interactive)
-  who show <uuid> display a holon's identity
-  who list        list all known holons (local + cached)
-  who pin <uuid>  capture version/commit/arch for a holon's binary`)
+  who new                     create a new holon identity (interactive)
+  who show <uuid>             display a holon's identity
+  who list                    list all known holons (local + cached)
+  who pin <uuid>              capture version/commit/arch for a holon's binary
+  who serve [--port 9090]     start gRPC server`)
 }
