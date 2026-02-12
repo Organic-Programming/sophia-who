@@ -1,4 +1,7 @@
-package main
+// Package identity defines the domain model for holon civil status.
+// A holon's identity is its HOLON.md frontmatter: UUID, name, clade,
+// lineage, and version pinning.
+package identity
 
 import (
 	"time"
@@ -42,7 +45,7 @@ type Identity struct {
 	ProtoStatus string `yaml:"proto_status"`
 }
 
-// Clades enumerates the valid computational nature classifications.
+// Clades enumerates valid computational nature classifications.
 var Clades = []string{
 	"deterministic/pure",
 	"deterministic/stateful",
@@ -58,8 +61,8 @@ var Statuses = []string{"draft", "stable", "deprecated", "dead"}
 // ReproductionModes enumerates how a holon can be created.
 var ReproductionModes = []string{"manual", "assisted", "automatic", "autopoietic", "bred"}
 
-// NewIdentity creates a fresh identity with a generated UUID and today's date.
-func NewIdentity() Identity {
+// New creates a fresh identity with a generated UUID and today's date.
+func New() Identity {
 	return Identity{
 		UUID:        uuid.New().String(),
 		Status:      "draft",

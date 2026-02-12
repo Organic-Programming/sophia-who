@@ -55,6 +55,6 @@ who pin <uuid>  — capture version/commit/arch for a holon's binary
 
 ## Contract
 
-- Proto file: `sophia-who.proto` (future)
+- Proto file: `sophia_who.proto`
 - Service: `SophiaWhoService`
 - RPCs: `CreateIdentity`, `ShowIdentity`, `ListIdentities`, `PinVersion`

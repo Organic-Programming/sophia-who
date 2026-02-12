@@ -1,4 +1,5 @@
-package main
+// Package server implements the gRPC service for Sophia Who?.
+package server
 
 import (
 	"context"
@@ -9,21 +10,21 @@ import (
 	"path/filepath"
 	"strings"
 
+	"sophia-who/internal/identity"
 	pb "sophia-who/proto"
 
 	"google.golang.org/grpc"
+	grpcReflection "google.golang.org/grpc/reflection"
 )
 
-const defaultPort = "50051"
-
-// server implements the SophiaWhoService gRPC interface.
-// It reuses the same logic as the CLI commands.
-type server struct {
+// Server implements the SophiaWhoService gRPC interface.
+type Server struct {
 	pb.UnimplementedSophiaWhoServiceServer
 }
 
-func (s *server) CreateIdentity(ctx context.Context, req *pb.CreateIdentityRequest) (*pb.CreateIdentityResponse, error) {
-	id := NewIdentity()
+// CreateIdentity creates a new holon identity from a gRPC request.
+func (s *Server) CreateIdentity(ctx context.Context, req *pb.CreateIdentityRequest) (*pb.CreateIdentityResponse, error) {
+	id := identity.New()
 
 	if req.GivenName == "" || req.FamilyName == "" || req.Motto == "" || req.Composer == "" {
 		return nil, fmt.Errorf("given_name, family_name, motto, and composer are required")
@@ -46,7 +47,6 @@ func (s *server) CreateIdentity(ctx context.Context, req *pb.CreateIdentityReque
 		id.WrappedLicense = req.WrappedLicense
 	}
 
-	// Determine output directory
 	outputDir := req.OutputDir
 	if outputDir == "" {
 		dirName := strings.ToLower(id.GivenName + "-" + strings.TrimSuffix(id.FamilyName, "?"))
@@ -59,18 +59,19 @@ func (s *server) CreateIdentity(ctx context.Context, req *pb.CreateIdentityReque
 	}
 
 	outputPath := filepath.Join(outputDir, "HOLON.md")
-	if err := writeHolonMD(id, outputPath); err != nil {
+	if err := identity.WriteHolonMD(id, outputPath); err != nil {
 		return nil, err
 	}
 
 	return &pb.CreateIdentityResponse{
-		Identity: identityToProto(id),
+		Identity: toProto(id),
 		FilePath: outputPath,
 	}, nil
 }
 
-func (s *server) ShowIdentity(ctx context.Context, req *pb.ShowIdentityRequest) (*pb.ShowIdentityResponse, error) {
-	path, err := findHolonByUUID(req.Uuid)
+// ShowIdentity retrieves a holon's identity by UUID.
+func (s *Server) ShowIdentity(ctx context.Context, req *pb.ShowIdentityRequest) (*pb.ShowIdentityResponse, error) {
+	path, err := identity.FindByUUID(".", req.Uuid)
 	if err != nil {
 		return nil, err
 	}
@@ -80,36 +81,36 @@ func (s *server) ShowIdentity(ctx context.Context, req *pb.ShowIdentityRequest) 
 		return nil, fmt.Errorf("cannot read %s: %w", path, err)
 	}
 
-	id, _, err := parseFrontmatter(data)
+	id, _, err := identity.ParseFrontmatter(data)
 	if err != nil {
 		return nil, err
 	}
 
 	return &pb.ShowIdentityResponse{
-		Identity:   identityToProto(id),
+		Identity:   toProto(id),
 		FilePath:   path,
 		RawContent: string(data),
 	}, nil
 }
 
-func (s *server) ListIdentities(ctx context.Context, req *pb.ListIdentitiesRequest) (*pb.ListIdentitiesResponse, error) {
-	holons, err := findAllHolons()
+// ListIdentities scans the project for all known holons.
+func (s *Server) ListIdentities(ctx context.Context, req *pb.ListIdentitiesRequest) (*pb.ListIdentitiesResponse, error) {
+	holons, err := identity.FindAll(".")
 	if err != nil {
 		return nil, err
 	}
 
-	var pbHolons []*pb.HolonIdentity
+	pbHolons := make([]*pb.HolonIdentity, 0, len(holons))
 	for _, h := range holons {
-		pbHolons = append(pbHolons, identityToProto(h))
+		pbHolons = append(pbHolons, toProto(h))
 	}
 
-	return &pb.ListIdentitiesResponse{
-		Identities: pbHolons,
-	}, nil
+	return &pb.ListIdentitiesResponse{Identities: pbHolons}, nil
 }
 
-func (s *server) PinVersion(ctx context.Context, req *pb.PinVersionRequest) (*pb.PinVersionResponse, error) {
-	path, err := findHolonByUUID(req.Uuid)
+// PinVersion updates the version pinning for a holon.
+func (s *Server) PinVersion(ctx context.Context, req *pb.PinVersionRequest) (*pb.PinVersionResponse, error) {
+	path, err := identity.FindByUUID(".", req.Uuid)
 	if err != nil {
 		return nil, err
 	}
@@ -119,12 +120,11 @@ func (s *server) PinVersion(ctx context.Context, req *pb.PinVersionRequest) (*pb
 		return nil, fmt.Errorf("cannot read %s: %w", path, err)
 	}
 
-	id, _, err := parseFrontmatter(data)
+	id, _, err := identity.ParseFrontmatter(data)
 	if err != nil {
 		return nil, err
 	}
 
-	// Update pinning fields (only non-empty values)
 	if req.BinaryPath != "" {
 		id.BinaryPath = req.BinaryPath
 	}
@@ -144,37 +144,38 @@ func (s *server) PinVersion(ctx context.Context, req *pb.PinVersionRequest) (*pb
 		id.Arch = req.Arch
 	}
 
-	if err := writeHolonMD(id, path); err != nil {
+	if err := identity.WriteHolonMD(id, path); err != nil {
 		return nil, err
 	}
 
-	return &pb.PinVersionResponse{
-		Identity: identityToProto(id),
-	}, nil
+	return &pb.PinVersionResponse{Identity: toProto(id)}, nil
 }
 
-// runServe starts the gRPC server.
-func runServe() error {
-	port := defaultPort
-	if len(os.Args) > 2 {
-		port = os.Args[2]
-	}
-
+// ListenAndServe starts the gRPC server on the given port.
+// When reflect is true, server reflection is enabled (default per Constitution Art. 2).
+func ListenAndServe(port string, reflect bool) error {
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		return fmt.Errorf("failed to listen on port %s: %w", port, err)
 	}
 
 	s := grpc.NewServer()
-	pb.RegisterSophiaWhoServiceServer(s, &server{})
+	pb.RegisterSophiaWhoServiceServer(s, &Server{})
+	if reflect {
+		grpcReflection.Register(s)
+	}
 
-	log.Printf("Sophia Who? gRPC server listening on :%s", port)
+	mode := "reflection ON"
+	if !reflect {
+		mode = "reflection OFF"
+	}
+	log.Printf("Sophia Who? gRPC server listening on :%s (%s)", port, mode)
 	return s.Serve(lis)
 }
 
-// --- Conversion helpers ---
+// --- Conversion helpers (private to server package) ---
 
-func identityToProto(id Identity) *pb.HolonIdentity {
+func toProto(id identity.Identity) *pb.HolonIdentity {
 	return &pb.HolonIdentity{
 		Uuid:           id.UUID,
 		GivenName:      id.GivenName,
